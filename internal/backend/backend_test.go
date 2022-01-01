@@ -1,7 +1,8 @@
-package internal
+package backend
 
 import (
 	"github.com/emersion/go-smtp"
+	"github.com/rktjmp/smtp-pigeon/internal/config"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -9,7 +10,7 @@ import (
 func TestLogin(t *testing.T) {
 	assert := assert.New(t)
 
-	be := NewBackend(&Config{})
+	be := NewBackend(&config.Config{})
 	session, err := be.Login(&smtp.ConnectionState{}, "anything", "accepted")
 	assert.Nil(err)
 	assert.NotNil(session)
@@ -18,7 +19,7 @@ func TestLogin(t *testing.T) {
 func TestAnonymousLogin(t *testing.T) {
 	assert := assert.New(t)
 
-	be := NewBackend(&Config{})
+	be := NewBackend(&config.Config{})
 	session, err := be.AnonymousLogin(&smtp.ConnectionState{})
 	assert.Nil(err)
 	assert.NotNil(session)
