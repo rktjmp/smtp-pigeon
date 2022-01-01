@@ -12,8 +12,16 @@ import (
 
 type stringSlice []string
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+	builtBy = "unknown"
+)
+
 func main() {
 	var showHelp bool
+	var showVersion bool
 	var verbose bool
 	var logWithPrefix bool
 	var mailDomain string
@@ -24,9 +32,11 @@ func main() {
 	var templateString string
 	var defaultTemplate = internal.DefaultTemplateString()
 
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
 	flag.BoolVar(&showHelp, "help", false, "View this text")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.BoolVar(&logWithPrefix, "standalone-logging", false, "Prefix logs with date and time")
+
 	flag.StringVar(&mailDomain, "domain", "localhost", "Mail domain to reply to EHLO with")
 	flag.StringVar(&listenHost, "host", "127.0.0.1", "Address to bind to")
 	flag.Var(&endpointHeaders, "header", "Headers to attach to POST, must be in form \"Header: Value\", may be used multiple times")
@@ -47,17 +57,22 @@ Can access:
 
 	flag.Parse()
 
+	if showHelp {
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+
+	if showVersion {
+		fmt.Printf("smtp-pigeon version: %s (%s, %s, %s)\n", version, commit, builtBy, date)
+		os.Exit(0)
+	}
+
 	if logWithPrefix {
 		log.SetPrefix("smtp-pigeon: ")
 		log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
 	} else {
 		log.SetPrefix("")
 		log.SetFlags(0)
-	}
-
-	if showHelp {
-		flag.PrintDefaults()
-		os.Exit(0)
 	}
 
 	if endpointURL == "" {
