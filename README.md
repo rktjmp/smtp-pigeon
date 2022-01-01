@@ -58,12 +58,6 @@ does not have a daemon form. These systems should be used to handle any
 
 Important caveats and gotchas:
 
-- **Subject**
-
-  SMTP doesn't explicitly have a "subject" concept, it's encoded into the
-  `DATA` command. `smtp-pigeon` does not attempt to parse any content,
-  extracting relevant message information is left to the endpoint.
-
 - **Authentication**
 
   `smtp-pigeon` provides no authentication methods and will allow any mail
@@ -92,6 +86,67 @@ Important caveats and gotchas:
 
   An easy to use MTA is [sSMPT](https://wiki.debian.org/sSMTP) which provides a
   sendmail interface and runs daemon-less. Simply set `mailhub=localhost:1025`.
+
+## Templating
+
+You can specify a custom template using Go's
+[text/template](https://pkg.go.dev/text/template) library. The following are
+available in the template:
+
+- `.ID`
+
+  `string`
+
+  UUID generated for each SMTP session, which effectively means for each
+  message.
+
+- `.Recipients`
+
+  `list of strings`
+
+  Each string will be provided by the SMTP `RCPT` command, this *may* be
+  different to the `To` header. Will always be present, will always have at
+  least one address. `To` header may or may not be given by the mail client.
+
+- `.From`
+
+  `string`
+
+  Provided by the SMTP `FROM` command, this *may* be different to the `From`
+  header. Will always be present, will always have one address. `From` header
+  may or may not be given by the mail client.
+
+- `.ReceivedAt`
+
+  `time.Time`
+
+  Marks the initial SMTP connection time, this *may* be different from the
+  `Date` header. Will always be present. Will be in server timezone. You can
+  convert to UTC via `{{.ReceivedAt.UTC().Format(time.RFC3399)}}`. `Date`
+  header may or may not be given by the mail client.
+
+- `.Data`
+
+  `string`
+
+  Provided by the SMTP `DATA` command. This contains the raw message data sent
+  to the server, including headers, etc.
+
+- `.Body`
+
+  `string`
+
+   `mail.Message.Body`, as parsed by
+   [net/mail](https://pkg.go.dev/net/mail#ReadMessage). Converted to `string`
+   from `io.Reader` for convenience.
+
+- `.Header`
+
+  `mail.Header`
+
+   See [net/mail.Header](https://pkg.go.dev/net/mail#Header). You can safely
+   access header values in your template with `{{.Header.Get "Subject"}}`,
+   which will return `""` if the header does not exist.
 
 ## Testing the Server
 
