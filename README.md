@@ -40,10 +40,11 @@ By default `smtp-pigeon` POSTs the following JSON:
 ```json
 {
   "id": "per-message-uuid",
-  "received_at": "ISO 8601 datetime when mail was received",
-  "data": "multiline string\nof SMTP data",
-  "from": "from@address",
-  "to": ["to@address", "another@address"] 
+  "timestamp": "RFC 3399 datetime",
+  "sender": "from@address",
+  "recipients": ["to@address", "another@address"],
+  "body": "multiline string",
+  "subject": "string"
 }
 ```
 
@@ -90,8 +91,12 @@ Important caveats and gotchas:
 ## Templating
 
 You can specify a custom template using Go's
-[text/template](https://pkg.go.dev/text/template) library. The following are
-available in the template:
+[text/template](https://pkg.go.dev/text/template) library.
+
+*Hint: You can use more complex templates by passing `--template """$(cat
+template.txt)"""` or similar, depending on your shell.*
+
+The following are available in the template:
 
 - `.ID`
 
@@ -100,15 +105,18 @@ available in the template:
   UUID generated for each SMTP session, which effectively means for each
   message.
 
-- `.Recipients`
+- `.Timestamp`
 
-  `list of strings`
+  `time.Time`
 
-  Each string will be provided by the SMTP `RCPT` command, this *may* be
-  different to the `To` header. Will always be present, will always have at
-  least one address. `To` header may or may not be given by the mail client.
+  Marks the initial SMTP connection time, this *may* be different from the
+  `Date` header. Will always be present. Will be in server timezone. You can
+  convert to UTC via `{{.Timestamp.UTC.Format "2006-01-02T15:04:05Z07:00" }}`.
+  See [time Constants](https://pkg.go.dev/time#pkg-constants), note the string
+  given indicates the format to use, not the time value. `Date` header may or
+  may not be given by the mail client.
 
-- `.From`
+- `.Sender`
 
   `string`
 
@@ -116,14 +124,13 @@ available in the template:
   header. Will always be present, will always have one address. `From` header
   may or may not be given by the mail client.
 
-- `.ReceivedAt`
+- `.Recipients`
 
-  `time.Time`
+  `list of strings`
 
-  Marks the initial SMTP connection time, this *may* be different from the
-  `Date` header. Will always be present. Will be in server timezone. You can
-  convert to UTC via `{{.ReceivedAt.UTC().Format(time.RFC3399)}}`. `Date`
-  header may or may not be given by the mail client.
+  Each string will be provided by the SMTP `RCPT` command, this *may* be
+  different to the `To` header. Will always be present, will always have at
+  least one address. `To` header may or may not be given by the mail client.
 
 - `.Data`
 
@@ -170,11 +177,15 @@ smtp-pigeon \
 
 ```sh
 echo """EHLO localhost
-MAIL FROM:<g.freeman@intern.blackmesa.com>
-RCPT TO:<i.kleiner@materials.blackmesa.com>
-RCPT TO:<e.vance@materials.blackmesa.com>
+MAIL FROM:<g.freeman@mailhub.bm.net>
+RCPT TO:<i.kleiner@mailhub.bm.net>
+RCPT TO:<e.vance@mailhub.bm.net>
 DATA
 Subject: ON MY WAY
+From: Gordon Freeman <freeman@materials.blackmesa.com>
+To: Eli Vance <vance@materials.blackmesa.com>
+Cc: Issac Kleiner <kleiner@materials.blackmesa.com>
+
 hey guys running l8 2day
 on the tram now
 cu soon
@@ -188,9 +199,9 @@ cu soon
 # => 250-CHUNKING
 # => 250-AUTH PLAIN
 # => 250 SIZE 1048576
-# => 250 2.0.0 Roger, accepting mail from <gordon@intern.blackmesa.com>
-# => 250 2.0.0 I'll make sure <kleiner@materials.blackmesa.com> gets this
-# => 250 2.0.0 I'll make sure <vance@materials.blackmesa.com> gets this
+# => 250 2.0.0 Roger, accepting mail from <g.freeman@mailhub.bm.net>
+# => 250 2.0.0 I'll make sure <i.kleiner@mailhub.bm.net> gets this
+# => 250 2.0.0 I'll make sure <e.vance@mailhub.bm.net> gets this
 # => 354 2.0.0 Go ahead. End your data with <CR><LF>.<CR><LF>
 # => 250 2.0.0 OK: queued
 ```
@@ -200,16 +211,28 @@ automatically created after delivery. Session reset and logout messages will
 indicate whether a POST request was made or not.*
 
 ```text
-99ed4e82-a5a6-4818-b5e2-69428d6be5e3: New session
-99ed4e82-a5a6-4818-b5e2-69428d6be5e3: Mail from: g.freeman@intern.blackmesa.com
-99ed4e82-a5a6-4818-b5e2-69428d6be5e3: Rcpt to: i.kleiner@materials.blackmesa.com
-99ed4e82-a5a6-4818-b5e2-69428d6be5e3: Rcpt to: e.vance@materials.blackmesa.com
-99ed4e82-a5a6-4818-b5e2-69428d6be5e3: Data: [redacted (68 bytes)]
-99ed4e82-a5a6-4818-b5e2-69428d6be5e3: Performing HTTP POST to http://my.endpoint.com/mail
-121229b2-7676-4d0c-9a91-4431a245b067: HTTP POST responded with 200
-99ed4e82-a5a6-4818-b5e2-69428d6be5e3: Session reset after POST
-0a9f97ad-ca05-4df9-906e-6f0e885b906d: New session
-0a9f97ad-ca05-4df9-906e-6f0e885b906d: Session logout without POST
+c7f132cb-6043-4964-9853-02133a1e3181: New session
+c7f132cb-6043-4964-9853-02133a1e3181: MAIL: g.freeman@mailhub.bm.net
+c7f132cb-6043-4964-9853-02133a1e3181: RCPT: i.kleiner@mailhub.bm.net
+c7f132cb-6043-4964-9853-02133a1e3181: RCPT: e.vance@mailhub.bm.net
+c7f132cb-6043-4964-9853-02133a1e3181: DATA: [redacted (222 bytes)]
+c7f132cb-6043-4964-9853-02133a1e3181: POST returned status: 200
+c7f132cb-6043-4964-9853-02133a1e3181: Session reset after POST
+02d6aebf-bfac-4c1f-9b7d-b9e781c7f1d1: New session
+02d6aebf-bfac-4c1f-9b7d-b9e781c7f1d1: Session logout without POST
+```
+
+*Received payload:*
+
+```json
+{
+  "id": "c7f132cb-6043-4964-9853-02133a1e3181",
+  "timestamp": "2022-01-01T10:10:20Z",
+  "sender": "g.freeman@mailhub.bm.net",
+  "recipients": ["i.kleiner@mailhub.bm.net", "e.vance@mailhub.bm.net"],
+  "body": "hey guys running l8 2day\non the tram now\ncu soon\n",
+  "subject":"ON MY WAY"
+}
 ```
 
 ## See also
