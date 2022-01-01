@@ -9,24 +9,26 @@
 
 ## `smtp-pigeon`
 
-`smtp-pigeon` is a tiny SMTP server that accepts mail and delivers it as a JSON
-HTTP POST (or any format you want).
+`smtp-pigeon` is a tiny SMTP server that accepts mail and delivers it as a
+HTTP POST request. By default it uses a JSON formatted payload, but you can
+provide any template you want.
 
-If you have a server generating periodic mail such as unattended upgrades
-reports but don't want to configure Postfix, SPF & DKIM & DMARC, etc or want to
-funnel those reports into a *"please, anything but email"* service;
+If you have tools generating mail reports such as Debians unattended upgrades
+but don't want to configure and run Postfix, SPF & DKIM & DMARC, etc or simply
+want to funnel those reports into a *"please, anything but email"* service;
 `smtp-pigeon` can act as the carrier.
 
-- Configurable payload (via a Go template)
+- Configurable payload (via Go's template engine)
 - Configurable headers
 - Portable Go binary
 - Tiny memory footprint
 
 ## Usage
 
-Simply run `smtp-pigeon` with the `--url url` option. By default `smtp-pigeon`
-will only accept connections from `127.0.0.1` at port `1025`. See `--help` for
-other options.
+Run `smtp-pigeon` with the `--url url` option. By default `smtp-pigeon` will
+only accept connections from `127.0.0.1` at port `1025`.
+
+See `--help` for other options.
 
 ```sh
 smtp-pigeon --url https://my.endpoint.com/mail
@@ -45,24 +47,22 @@ By default `smtp-pigeon` POSTs the following JSON:
 }
 ```
 
-You can configure what `smtp-pigeon` POSTs with the `--template` tag, using any
-standard Go templating functions. You are not limited to sending JSON if you
-also include a header flag that sets `Content-Type`, i.e:  `--header
-"Content-Type: text/html"` flag.
+You can configure what `smtp-pigeon` POSTs with the `--template` flag, using
+any standard Go templating functions. You are not limited to sending JSON but
+the `Content-Type` header is set to `application/json` by default. You must
+override it with your own `--header` flag.
 
 `smtp-pigeon` is intended to be run by systemd or any container runtime and
 does not have a daemon form. These systems should be used to handle any
-"service" requirements such as stop, start, restarting and log aggregation.
-
-See `--help` for other options.
+"service" requirements such as stop, start, restart and log aggregation.
 
 Important caveats and gotchas:
 
 - **Subject**
 
-  SMTP doesn't explicitly have a "subject" concept, it's encoded into the `DATA`
-  command. `smtp-pigeon` does not attempt to parse any content, extracting
-  relevant message information is left to the endpoint.
+  SMTP doesn't explicitly have a "subject" concept, it's encoded into the
+  `DATA` command. `smtp-pigeon` does not attempt to parse any content,
+  extracting relevant message information is left to the endpoint.
 
 - **Authentication**
 
@@ -74,10 +74,10 @@ Important caveats and gotchas:
 
 - **Message Content**
 
-  `smtp-pigeon` performs no message screening. If it receives something Go's
-  JSON marshaller and HTTP client will accept without error, it will send it
-  along. This could potentially have effects at the endpoint if large files are
-  attached.
+  `smtp-pigeon` performs no message screening. Whatever is sent in the mail will
+  be passed along. This could include large amounts of encoded data if a service
+  attaches a file for example. This may have repercussions downstream at the
+  endpoint.
 
 - **Delivery Guarantee**
 
@@ -97,7 +97,9 @@ Important caveats and gotchas:
 
 You can manually inspect `smtp-pigeon`s behaviour by doing the following:
 
-*Run the server:*
+*Run the server. Consider generating a [ptsv2.com endpoint](https://ptsv2.com/)
+to use or running a
+[netcat](https://nmap.org/ncat/guide/index.html#ncat-overview) listen server.*
 
 ```sh
 smtp-pigeon \
@@ -109,7 +111,7 @@ smtp-pigeon \
 # => smtp-pigeon listening at 0.0.0.0:9925
 ```
 
-*Send mail via [netcat](https://nmap.org/ncat/guide/index.html#ncat-overview):*
+*Send mail via netcat.*
 
 ```sh
 echo """EHLO localhost
