@@ -3,8 +3,8 @@ package internal
 import (
 	"github.com/emersion/go-smtp"
 	"github.com/stretchr/testify/assert"
-	"time"
 	"testing"
+	"time"
 )
 
 func TestHeaderStringsToPairs(t *testing.T) {
