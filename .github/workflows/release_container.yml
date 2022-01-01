@@ -1,0 +1,27 @@
+name: Release Container
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2 # Checking out the repo
+    - name: Build container
+      run: |
+        docker login -u publisher -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+        IMAGE_TAG_PREFIX=$(echo ghcr.io/$GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')
+        docker build \
+          --build-arg VERSION=$GITHUB_REF_NAME \
+          --build-arg SHA=$GITHUB_SHA \
+          --build-arg DATE=$(date --iso-8601=seconds) \
+          -f Containerfile \
+          --tag "$IMAGE_TAG_PREFIX:$GITHUB_REF_NAME" \
+          --tag "$IMAGE_TAG_PREFIX:$GITHUB_SHA" \
+          --tag "$IMAGE_TAG_PREFIX:latest" \
+          .
+        docker push --all-tags $IMAGE_TAG_PREFIX

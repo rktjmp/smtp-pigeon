@@ -1,6 +1,7 @@
-name: Release
+name: Release Binary
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "*"
