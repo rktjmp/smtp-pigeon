@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/Masterminds/sprig/v3"
 	"regexp"
 	"text/template"
 )
@@ -9,15 +10,16 @@ import (
 // Config contains operatonal configuration values
 type Config struct {
 	Verbose  bool
-	URL      string
+	URL      *template.Template
 	Headers  [][2]string
 	Template *template.Template
 }
 
 // NewConfig creates an SMTP Pigeon configuration struct
-func NewConfig(url string, headerArgs []string, templateString string, verbose bool) (*Config, error) {
+func NewConfig(urlString string, headerArgs []string, templateString string, verbose bool) (*Config, error) {
 	var headers [][2]string
-	var tmpl *template.Template
+	var urlTemplate *template.Template
+	var bodyTemplate *template.Template
 	var err error
 
 	headers, err = headerStringsToPairs(headerArgs)
@@ -25,17 +27,21 @@ func NewConfig(url string, headerArgs []string, templateString string, verbose b
 		return nil, err
 	}
 
-	// check that the template will compile and will apply
-	tmpl, err = template.New("post-template").Parse(templateString)
+	urlTemplate, err = template.New("url-template").Funcs(sprig.FuncMap()).Parse(urlString)
+	if err != nil {
+		return nil, fmt.Errorf("Could not parse url: %v", err)
+	}
+
+	bodyTemplate, err = template.New("post-template").Funcs(sprig.FuncMap()).Parse(templateString)
 	if err != nil {
 		return nil, fmt.Errorf("Could not parse template: %v", err)
 	}
 
 	return &Config{
 		Verbose:  verbose,
-		URL:      url,
+		URL:      urlTemplate,
 		Headers:  headers,
-		Template: tmpl,
+		Template: bodyTemplate,
 	}, nil
 }
 

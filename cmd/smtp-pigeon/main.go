@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -26,19 +27,15 @@ var (
 )
 
 type flags struct {
-	help         bool // show help
-	version      bool // show version
-	prefixLogger bool // prefix logger with date-time
-
-	mailDomain string // SMTP "hostname"
-
-	listenHost string // listen server settings
-	listenPort int
-
-	endpointURL     string      // make post where
+	help            bool   // show     help
+	version         bool   // show     version
+	prefixLogger    bool   // prefix   logger with date-time
+	mailDomain      string // SMTP     "hostname"
+	listenHost      string // listen   server settings
+	listenPort      int
+	endpointURL     string      // make     post   where
 	endpointHeaders stringSlice // {header, header}
-
-	templateString string // post what
+	templateString  string      // post     what
 }
 
 func parseFlags() *flags {
@@ -53,7 +50,7 @@ func parseFlags() *flags {
 	flag.StringVar(&flags.listenHost, "host", "127.0.0.1", "Address to bind to")
 	flag.Var(&flags.endpointHeaders, "header", "Headers to attach to POST, must be in form \"Header: Value\", may be used multiple times")
 	flag.IntVar(&flags.listenPort, "port", 1025, "Port to listen on")
-	flag.StringVar(&flags.endpointURL, "url", "", "URL to make HTTP POST to, required")
+	flag.StringVar(&flags.endpointURL, "url", "", "URL to make HTTP POST to, required, may be templated")
 	flag.StringVar(
 		&flags.templateString,
 		"template",
@@ -90,7 +87,8 @@ func dryrun(cfg *config.Config) error {
 
 	// mostly use the real config, just point it at our fake server
 	url := cfg.URL
-	cfg.URL = server.URL
+	var err error
+	cfg.URL, err = template.New("mock").Parse(server.URL)
 
 	log.SetOutput(io.Discard)
 
@@ -106,7 +104,7 @@ on the tram now`
 	session.Mail("freeman@mailhub.bm.net", smtp.MailOptions{})
 	session.Rcpt("vance@mailhub.bm.net")
 	session.Rcpt("kleiner@mailhub.bm.net")
-	err := session.Data(strings.NewReader(data))
+	err = session.Data(strings.NewReader(data))
 
 	log.SetOutput(os.Stderr)
 

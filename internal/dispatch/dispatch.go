@@ -20,17 +20,20 @@ type TemplateData struct {
 }
 
 type Endpoint struct {
-	URL     string
+	URL     *template.Template
 	Headers [][2]string
 }
 
 func POST(endpoint *Endpoint, tmpl *template.Template, data *TemplateData) (int, error) {
-	var buf bytes.Buffer
-	err := tmpl.Execute(&buf, data)
-	if err != nil {
+	var bodyBuf bytes.Buffer
+	if err := tmpl.Execute(&bodyBuf, data); err != nil {
 		return 0, err
 	}
-	resp, err := performPOSTRequest(endpoint.URL, endpoint.Headers, &buf)
+	var urlBuf bytes.Buffer
+	if err := endpoint.URL.Execute(&urlBuf, data); err != nil {
+		return 0, err
+	}
+	resp, err := performPOSTRequest(urlBuf.String(), endpoint.Headers, &bodyBuf)
 	if err != nil {
 		return 0, err
 	}
