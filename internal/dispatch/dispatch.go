@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"text/template"
 	"time"
+	"github.com/rktjmp/smtp-pigeon/internal/config"
 )
 
 type TemplateData struct {
@@ -21,7 +22,7 @@ type TemplateData struct {
 
 type Endpoint struct {
 	URL     *template.Template
-	Headers [][2]string
+	Headers []config.HeaderPair
 }
 
 func POST(endpoint *Endpoint, tmpl *template.Template, data *TemplateData) (int, error) {
@@ -33,7 +34,18 @@ func POST(endpoint *Endpoint, tmpl *template.Template, data *TemplateData) (int,
 	if err := endpoint.URL.Execute(&urlBuf, data); err != nil {
 		return 0, err
 	}
-	resp, err := performPOSTRequest(urlBuf.String(), endpoint.Headers, &bodyBuf)
+	var headers [][2]string
+	for _, header := range endpoint.Headers {
+		var valueBuf bytes.Buffer
+		if err := header.Value.Execute(&valueBuf, data); err != nil {
+			return 0, fmt.Errorf("could not execute header template: %q: %v", header.Key, err)
+		}
+		headers = append(headers, [2]string{
+			header.Key,
+			valueBuf.String(),
+		})
+	}
+	resp, err := performPOSTRequest(urlBuf.String(), headers, &bodyBuf)
 	if err != nil {
 		return 0, err
 	}
