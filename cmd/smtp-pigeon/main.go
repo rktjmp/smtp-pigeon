@@ -27,15 +27,15 @@ var (
 )
 
 type flags struct {
-	help            bool   // show     help
-	version         bool   // show     version
-	prefixLogger    bool   // prefix   logger with date-time
-	mailDomain      string // SMTP     "hostname"
-	listenHost      string // listen   server settings
+	help            bool        // show help
+	version         bool        // show version
+	prefixLogger    bool        // prefix logger with date-time
+	mailDomain      string      // SMTP "hostname"
+	listenHost      string      // listen server settings
 	listenPort      int
-	endpointURL     string      // make     post   where
+	endpointURL     string      // make post where
 	endpointHeaders stringSlice // {header, header}
-	templateString  string      // post     what
+	templateString  string      // post what
 }
 
 func parseFlags() *flags {
@@ -48,20 +48,25 @@ func parseFlags() *flags {
 
 	flag.StringVar(&flags.mailDomain, "domain", "localhost", "Mail domain to reply to EHLO with")
 	flag.StringVar(&flags.listenHost, "host", "127.0.0.1", "Address to bind to")
-	flag.Var(&flags.endpointHeaders, "header", "Headers to attach to POST, must be in form \"Header: Value\", may be used multiple times")
+	flag.Var(&flags.endpointHeaders, "header", `Headers to attach to POST.
+Must be in form "Header: Value" and may be given multiple times.
+Values may be templated (sprig + env) but header name must be a plain string postfixed by ":"`)
 	flag.IntVar(&flags.listenPort, "port", 1025, "Port to listen on")
-	flag.StringVar(&flags.endpointURL, "url", "", "URL to make HTTP POST to, required, may be templated")
+	flag.StringVar(&flags.endpointURL, "url", "", "URL to make HTTP POST to, required, may be templated (sprig + env)")
 	flag.StringVar(
 		&flags.templateString,
 		"template",
 		defaultTemplate,
-		`Template used to render POST body. Does not have to be JSON if you set the appropriate Content-Type header.
+		`Template (sprig + env) used to render POST body.
+Does not have to be JSON if you set the appropriate Content-Type header.
 Can access:
-  - ID (string),
-  - RecievedAt (string),
-  - From (string),
-  - To (a list of strings) and
-  - Data (multiline string).
+  - ID         string
+  - Timestamp  time.Time
+  - Sender     string
+  - Recipients []string
+  - Data       string
+  - Header     mail.Header
+  - Body       string
 `)
 
 	flag.Parse()
