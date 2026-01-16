@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.17.5
+ARG GO_VERSION=1.21
 FROM golang:${GO_VERSION}-alpine AS build
 
 RUN apk add --no-cache git
